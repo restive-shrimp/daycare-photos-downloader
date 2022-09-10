@@ -1,0 +1,18 @@
+{
+  "name": "Kinderloop image Extension",
+  "version": "1.0",
+  "description": "Extension to download images from a Kinderloop app feed.",
+  "manifest_version": 3,
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "index.html"
+  },
+  "permissions": ["storage", "webNavigation", "activeTab", "scripting", "downloads"],
+  "host_permissions": [
+    "http://*.kinderloop.com/",
+    "https://*.kinderloop.com/",
+    "http://*.google.com/"
+  ]
+}
