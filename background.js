@@ -16,6 +16,7 @@ chrome.runtime.onMessage.addListener(
       catch (e){
         console.log("Error: " + e);
       }
+      console.log("IMAGES :" +  img_url);
      chrome.downloads.download({
        url: img_url,
        filename: saveas,

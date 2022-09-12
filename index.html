@@ -1,12 +1,24 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <link rel="stylesheet" href="button.css">
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0/dist/css/bootstrap.min.css" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0/dist/js/bootstrap.bundle.min.js"></script>
+  <link rel="stylesheet" href="extension.css">
+  <link rel="stylesheet" href="bootstrap.min.css" rel="stylesheet">
+  <script src="bootstrap.bundle.min.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
 </head>
 <body>
-  <button id="getPhotos">Get photos</button>
-  <script src="kinderloop.js"></script>
+  <div class="container-fluid p-5 my-5 border">
+    <div class="card" style="width:48%">
+      <img class="card-img-top" src="kinderloop.jpg" alt="Kinderloop">
+      <div class="card-body">
+        <h4 class="card-title">Kinderloop</h4>
+        <p class="card-text">Kinderloop is displaying feed with 20 messages. Click 'Load more' before using
+        this extension if you want to download more than images from last 20 notifications.</p>
+        <button id="getTodaysPhotosKinderloop" type="button" class="btn btn-outline-primary">Get today's photos</button>
+        <button id="getAllPhotosKinderloop" type="button" class="btn btn-outline-primary">Get photos from feed</button>
+      </div>
+    </div>
+  </div>
 </body>
+<script src="kinderloop.js"></script>
 </html>
