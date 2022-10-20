@@ -1,9 +1,13 @@
 // Attaching actions to buttons in the extension card.
 const getTodaysPhotosKinderloop = document.getElementById("getTodaysPhotosKinderloop");
+const getRecentPhotosKinderloop = document.getElementById("getRecentPhotosKinderloop");
 const getVisiblePhotosKinderloop = document.getElementById("getVisiblePhotosKinderloop");
 const getAllPhotosKinderloop = document.getElementById("getAllPhotosKinderloop");
 
-// Function disables or enables buttons. The buttons should not be active
+const getVisiblePhotosKinderm8 = document.getElementById("getVisiblePhotosKinderm8");
+
+
+// Disables or enables buttons. The buttons should not be active
 // on the pages which are not in the application domain and should remain
 // inactive when processing (i.e. downloading photos or expanding the feed).
 buttonsDisabled = (disabled = true) => {
@@ -29,13 +33,25 @@ sendBackendRequest = (tab, timePeriod) => {
 chrome.tabs.query({
   active: true,
   lastFocusedWindow: true,
-  url: ["https://*.kinderloop.com/*"]
+  url: ["https://*.kinderloop.com/*", "https://*.kinderm8.com.au/*"]
 }, tabs => {
   buttonsDisabled(true);
   if (tabs[0]) {
     buttonsDisabled(false);
   }
 });
+
+// kinderm8
+// Handler to pick up feed's photos.
+getVisiblePhotosKinderm8.addEventListener("click", async () => {
+  let [tab] = await chrome.tabs.query({
+    active: true,
+    currentWindow: true,
+    url: ["https://*.kinderm8.com.au/*"]
+  });
+  sendBackendRequest(tab, 'kinderm8_feed');
+});
+
 
 // Handler to pick up today's photos.
 getTodaysPhotosKinderloop.addEventListener("click", async () => {
@@ -45,6 +61,17 @@ getTodaysPhotosKinderloop.addEventListener("click", async () => {
     url: ["https://*.kinderloop.com/*"]
   });
   sendBackendRequest(tab, 'today');
+});
+
+// Handler to pick up recent (selected day)'s photos.
+getRecentPhotosKinderloop.addEventListener("click", async () => {
+  let [tab] = await chrome.tabs.query({
+    active: true,
+    currentWindow: true,
+    url: ["https://*.kinderloop.com/*"]
+  });
+  const recentDateId = document.getElementById("dateId").value;
+  sendBackendRequest(tab, recentDateId);
 });
 
 // Handler to pick up feed's photos.
@@ -68,11 +95,31 @@ getPostNodes = (timePeriod = 'feed') => {
     kinderloop_posts_element
   }) => {
     console.log("kinderloop_posts_element value is " + kinderloop_posts_element);
-
   })
   chrome.storage.sync.get("kinderloop_gallery_class", ({
     kinderloop_gallery_class
   }) => {
+    getPhotosForTheDayOf = (posts, requestedPostsDate) => {
+      let postArray = [];
+      for (let k in posts) {
+        // Searching all the posts to find the date. Removing whitespaces to
+        // reduce chance for mistake.
+        if (posts[k].getAttribute) {
+          if ((posts[k].querySelector('.sent').textContent.replace(/\s+/g, '')).includes((requestedPostsDate).replace(/\s+/g, ''))) {
+            // The message is found, add content from nailthumb containers to
+            // download list.
+            let post_images = posts[k].querySelectorAll('.nailthumb-container');
+            for (let j in post_images) {
+              if (post_images[j].getAttribute) {
+                photosArray.push(post_images[j].getAttribute('href'));
+              }
+            }
+          }
+        }
+      }
+      return photosArray;
+    };
+
     const posts = document.querySelectorAll('.post-content');
     let requestParam = '';
     let photosArray = [];
@@ -82,27 +129,12 @@ getPostNodes = (timePeriod = 'feed') => {
         // This is the string which will be used to find posts from today's day.
         // The issues is that month can be written in other format (i.e. other
         // laguage), so it is not universal. Day should be good enough though.
-        const todaysDayRecognitionString = 'Sent on 27' //+ (new Date().getDate());
-        let postArray = [];
-        const latestPostDate = posts[0].querySelector('.sent').textContent;
-        for (let k in posts) {
-          // Searching all the posts to find the date. Removing whitespaces to
-          // reduce chance for mistake.
-          if (posts[k].getAttribute) {
-            if ((posts[k].querySelector('.sent').textContent.replace(/\s+/g, '')).includes((latestPostDate).replace(/\s+/g, ''))) {
-              // The message is found, add content from nailthumb containers to
-              // download list.
-              let post_images = posts[k].querySelectorAll('.nailthumb-container');
-              for (let j in post_images) {
-                if (post_images[j].getAttribute) {
-                  photosArray.push(post_images[j].getAttribute('href'));
-                }
-              }
-            }
-          }
-        }
+        const latestPostDate = (posts[0].querySelector('.sent').textContent).replace(/\s+/g, '').substring(0,9);
+        const latestPostDateDigits = latestPostDate.replace(/\D/g, '');
+        const todaysDayRecognitionString = 'Sent on ' + latestPostDateDigits; //+ (new Date().getDate());
+
         requestParam = {
-          collection: photosArray
+          collection: getPhotosForTheDayOf(posts, todaysDayRecognitionString)
         };
         break;
       case 'feed':
@@ -118,11 +150,30 @@ getPostNodes = (timePeriod = 'feed') => {
           collection: photosArray
         };
         break;
+        case 'kinderm8_feed':
+          // The most straightforward case which grabs href from visible posts and
+          // sends to the background request.
+          const kinderm8_photos = document.querySelectorAll('a.show-download');
+          for (let k in kinderm8_photos) {
+            if (kinderm8_photos[k].getAttribute) {
+              photosArray.push(kinderm8_photos[k].getAttribute('href'));
+            }
+          }
+          requestParam = {
+            collection: photosArray
+          };
+          break;
       case 'all':
         $('#posts').infinitescroll('retrieve');
         break;
       default:
-
+       if(parseInt(timePeriod)>0){
+         const requestedDate = 'Sent on ' + timePeriod;
+         requestParam = {
+           collection: getPhotosForTheDayOf(posts, requestedDate)
+         };
+       }
+        break;
     }
     chrome.runtime.sendMessage(requestParam);
   });
@@ -139,11 +190,11 @@ getAllPhotosKinderloop.addEventListener("click", async () => {
   if (tab.id)
     expandFeed(tab.id);
 
-  // chrome.scripting.executeScript({
-  //   target: { tabId: tab.id },
-  //   func: getPhotosNodes,
-  //   args: ['all']
-  // });
+  chrome.scripting.executeScript({
+    target: { tabId: tab.id },
+    func: getPhotosNodes,
+    args: ['all']
+  });
 });
 
 // Function executing browser script injecting function in the certain tab.
@@ -180,7 +231,6 @@ expandInjection = () => {
 
       $('#posts').infinitescroll('retrieve');
       processing = true;
-
 
       if(document.querySelectorAll('.post').length > 100)
         return
